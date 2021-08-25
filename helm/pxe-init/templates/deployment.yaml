@@ -1,0 +1,72 @@
+# REST deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.label }}
+spec:
+  strategy:
+    type: Recreate
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.label }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.label }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: {{ .Values.image.name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.httpPort }}
+            - containerPort: {{ .Values.service.grpcPort }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.httpPort }}
+            initialDelaySeconds: 10
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.service.httpPort }}
+            initialDelaySeconds: 10
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          env:
+            - name: PXE_SRV_HTTP_PORT
+              value: {{ .Values.service.httpPort | quote }}
+            - name: PXE_SRV_GRPC_PORT
+              value: {{ .Values.service.grpcPort | quote }}
+            - name: PXE_SRV_FORWARD_SERVER
+              value: {{ .Values.env.forwardServer | quote }}
+            - name: PXE_SRV_DB_HOST
+              value: {{ .Values.env.dbHost | quote }}
+            - name: PXE_SRV_DB_PORT
+              value: {{ .Values.env.dbPort | quote }}
+            - name: PXE_SRV_DB_USER
+              value: {{ .Values.env.dbUser | quote }}
+            - name: PXE_SRV_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-pass
+                  key: password
+            - name: PXE_SRV_DB_NAME
+              value: {{ .Values.env.dbName | quote }}
+            - name: PXE_SRV_DB_SSL_MODE
+              value: {{ .Values.env.dbSSLMode | quote }}

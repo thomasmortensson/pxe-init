@@ -1,0 +1,105 @@
+---
+# Source: pxe-init/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pxe-init-svc-acct
+  namespace: pxe-init
+---
+# Source: pxe-init/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: pxe-init-server
+  namespace: pxe-init
+  annotations:
+    metallb.universe.tf/address-pool: default
+spec:
+  type: "LoadBalancer"
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+    - port: 5000
+      targetPort: 5000
+      protocol: TCP
+      name: grpc
+  selector:
+    app: pxe-init
+---
+# Source: pxe-init/templates/deployment.yaml
+# REST deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pxe-init-server
+  namespace: pxe-init
+  labels:
+    app: pxe-init
+spec:
+  strategy:
+    type: Recreate
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pxe-init
+  template:
+    metadata:
+      labels:
+        app: pxe-init
+    spec:
+      serviceAccountName: pxe-init-svc-acct
+      containers:
+        - name: pxe-init-server
+          securityContext:
+            null
+          image: zbox.mortcloud.com:5000/pxe-init/pxe-init-server:0.0.0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 80
+            - containerPort: 5000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 60
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 80
+            initialDelaySeconds: 10
+            failureThreshold: 3
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          env:
+            - name: PXE_SRV_HTTP_PORT
+              value: "80"
+            - name: PXE_SRV_GRPC_PORT
+              value: "5000"
+            - name: PXE_SRV_FORWARD_SERVER
+              value: "http://zbox.mortcloud.com"
+            - name: PXE_SRV_DB_HOST
+              value: "10.22.0.4"
+            - name: PXE_SRV_DB_PORT
+              value: "5432"
+            - name: PXE_SRV_DB_USER
+              value: "pxe_init"
+            - name: PXE_SRV_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-pass
+                  key: password
+            - name: PXE_SRV_DB_NAME
+              value: "pxe_init"
+            - name: PXE_SRV_DB_SSL_MODE
+              value: "disable"

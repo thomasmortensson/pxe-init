@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option go_package = "internal/adapters/grpc/v1;v1";
+
+package v1;
+
+service PxeInit {
+    // List images
+    rpc ListImages              (ListImagesRequest)             returns (ListImagesResponse)                {}
+
+    // Register image to machine with MAC
+    rpc RegisterImageMachine    (RegisterImageMachineRequest)   returns (RegisterImageMachineResponse)      {}
+}
+
+
+message Image {
+    string      name    = 1;
+    string      kernel  = 2;
+    string      initrd  = 3;
+    string      rootfs  = 4;
+}
+
+message Machine {
+    string      mac     = 1;
+    string      image   = 2;
+}
+
+message ListImagesRequest {
+}
+
+message ListImagesResponse {
+    repeated Image      images = 1;
+    // TODO filtering
+    // TODO pagination
+}
+
+message RegisterImageMachineRequest {
+    Machine    machine = 1;
+}
+
+message RegisterImageMachineResponse {
+}

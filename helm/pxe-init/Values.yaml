@@ -1,0 +1,47 @@
+replicaCount: 2
+
+name: pxe-init-server
+
+label: pxe-init
+
+image:
+  name: "pxe-init-server"
+  repository: "zbox.mortcloud.com:5000/pxe-init/pxe-init-server"
+  pullPolicy: Always
+  # Use specified tag not latest
+  tag: "0.0.0"
+
+serviceAccount:
+  name: "pxe-init-svc-acct"
+
+service:
+  type: LoadBalancer
+  grpcPort: 5000
+  httpPort: 80
+  addressPool: default
+
+env:
+  forwardServer: http://zbox.mortcloud.com
+  dbHost: 10.22.0.4
+  dbPort: 5432
+  dbUser: postgres
+  dbName: postgres
+  dbSSLMode: disable
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
